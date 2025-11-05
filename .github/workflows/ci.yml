@@ -1,13 +1,54 @@
-name: CI (Python, no CLI)
+name: Learn GitHub Actions
 
+# This workflow demonstrates how to run scripts in GitHub's cloud
+# "on" defines when this workflow runs
 on:
   push:
-    branches: [ main ]
-  workflow_dispatch:  # manual “Run workflow” button
+    branches: [ main, 'claude/**' ]  # Runs when you push to main or claude branches
+  pull_request:
+    branches: [ main ]                # Runs when you open a PR to main
+  workflow_dispatch:                  # Adds a manual "Run workflow" button in GitHub UI
 
+# "jobs" are the tasks that will run
 jobs:
-  run-python:
+  # Job 1: Run our Python test script
+  run-python-script:
+    name: Run Python Test Script
+    runs-on: ubuntu-latest  # Use GitHub's Ubuntu Linux machine
+
+    steps:
+      # Step 1: Get your code from the repository
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      # Step 2: Install Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'  # Cache pip packages to speed up future runs
+          cache-dependency-path: requirements.txt
+
+      # Step 3: Install required packages from requirements.txt
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # Step 4: Run our test script
+      - name: Run the test script
+        run: python app.py
+
+      # Step 5: Upload the file created by our script
+      - name: Upload test output
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-output
+          path: test_output.txt
+
+  # Job 2: Run unit tests (demonstrates how to test your code)
+  run-tests:
+    name: Run Unit Tests
     runs-on: ubuntu-latest
+
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -16,11 +57,34 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'
-          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Run pytest
+        run: pytest test_app.py -v
+
+  # Job 3: Show how to run on multiple Python versions (matrix strategy)
+  test-multiple-versions:
+    name: Test on Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11', '3.12']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run the script
-        run: python app.py
+      - name: Quick test
+        run: python -c "import requests; print(f'Python {requests.__version__} works!')"
